@@ -1,46 +1,49 @@
-const express = require('express');
-const app = express();
+var express = require('express');
+var app = express();
 
-const morgan = require("morgan");
-const bodyParser = require("body-parser");
+app.set('views', 'views');
+app.engine('html', require('ejs').renderFile);
+app.set('view engine', 'ejs');
 
+app.get('/', function(req, res){
 
+	//set default variables
+	var totalStudents = 80,
+		pageSize = 8,
+		pageCount = 80/8,
+		currentPage = 1,
+		students = [],
+		studentsArrays = [], 
+		studentsList = [];
 
-app.use(morgan("dev"));
+	//genreate list of students
+	for (var i = 1; i < totalStudents; i++) {
+		students.push({name: 'Student Number ' + i});
+	}
 
-app.use('/uploads', express.static('uploads'));
+	//split list into groups
+	while (students.length > 0) {
+	    studentsArrays.push(students.splice(0, pageSize));
+	}
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+	//set current page if specifed as get variable (eg: /?page=2)
+	if (typeof req.query.page !== 'undefined') {
+		currentPage = +req.query.page;
+	}
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-  if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
-      return res.status(200).json({});
-  }
-  next();
+	//show list of students from group
+	studentsList = studentsArrays[+currentPage - 1];
+
+	//render index.ejs view file
+	res.render('index', {
+		students: studentsList,
+		pageSize: pageSize,
+		totalStudents: totalStudents,
+		pageCount: pageCount,
+		currentPage: currentPage
+	});
 });
 
-
-app.use((req, res, next) => {
-    const error = new Error("Not found");
-    error.status = 404;
-    next(error);
-  });
-  
-  app.use((error, req, res, next) => {
-    res.status(error.status || 500);
-    res.json({
-      error: {
-        message: error.message
-      }
-    });
-  });
-  
-
-module.exports = app;
+var server = app.listen(3000, function() {
+    console.log('Listening on port %d', server.address().port);
+});
